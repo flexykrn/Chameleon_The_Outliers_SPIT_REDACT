@@ -9,9 +9,11 @@ const cinzel = Cinzel({
 
 export default function BankLogo() {
   return (
-    <div className ={`${cinzel.className} flex items-center gap-2 text-3xl font-semibold `}>
+    <div
+      className={`${cinzel.className} flex items-center gap-2 text-3xl font-semibold `}
+    >
+      <IndianRupee size={36}></IndianRupee>
       <h1>National Bank of India</h1>
-      <IndianRupee size={40}></IndianRupee>
     </div>
   );
 }
