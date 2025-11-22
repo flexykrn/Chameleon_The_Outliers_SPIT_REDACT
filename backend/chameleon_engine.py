@@ -113,7 +113,13 @@ class ChameleonDefense:
                 "status": 500, 
                 "msg": f"ERROR 1064 (42000): You have an error in your SQL syntax near '{raw_payload}' at line 1"
             }
+    
         elif attack_type == 'XSS':
             response = {"status": 403, "msg": "Forbidden: Input validation failed."}
+
+     
+        response['classification'] = attack_type
+        response['confidence'] = float(confidence)
+        response['detection_source'] = source
         
         return response
