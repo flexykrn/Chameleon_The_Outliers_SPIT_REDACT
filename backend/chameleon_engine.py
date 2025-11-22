@@ -5,6 +5,7 @@ import json
 import hashlib
 import urllib.parse
 from datetime import datetime
+from chameleon_xai import ChameleonXAI
 
 class HeuristicReflex:
     def __init__(self):
@@ -44,12 +45,14 @@ class ChameleonDefense:
         self.previous_hash = "0" * 64
         self.model = None
         self.encoder = None
+        self.xai = None
 
         try:
             with open(model_path, 'rb') as f:
                 bundle = pickle.load(f)
                 self.model = bundle['pipeline']
                 self.encoder = bundle['encoder']
+                self.xai = ChameleonXAI(self.model, self.encoder)
         except FileNotFoundError:
             print(f"Error: '{model_path}' not found.")
 
@@ -59,8 +62,6 @@ class ChameleonDefense:
         except:
             pass
         return str(text).lower().strip()
-
-
 
     def tarpit_logic(self, ip):
         now = time.time()
@@ -81,20 +82,22 @@ class ChameleonDefense:
         
         attack_type, confidence = self.reflex.scan(clean_payload)
         source = "Heuristic (Reflex)"
+        explanation = None
         
         if attack_type is None:
             if self.model:
                 pred_label = self.model.predict([clean_payload])[0]
                 attack_type = self.encoder.inverse_transform([pred_label])[0]
                 
-                
                 if hasattr(self.model.named_steps['clf'], 'predict_proba'):
                     probs = self.model.predict_proba([clean_payload])[0]
                     confidence = max(probs)
                 else:
-             
                     confidence = 0.95 
                 source = "Chameleon Model (Cortex)"
+
+                if attack_type != "Benign" and self.xai:
+                    explanation = self.xai.explain(clean_payload)
             else:
                 attack_type = "Benign"
                 confidence = 0.0
@@ -113,13 +116,12 @@ class ChameleonDefense:
                 "status": 500, 
                 "msg": f"ERROR 1064 (42000): You have an error in your SQL syntax near '{raw_payload}' at line 1"
             }
-    
         elif attack_type == 'XSS':
             response = {"status": 403, "msg": "Forbidden: Input validation failed."}
 
-     
         response['classification'] = attack_type
         response['confidence'] = float(confidence)
         response['detection_source'] = source
+        response['xai_explanation'] = explanation
         
         return response
