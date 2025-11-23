@@ -105,7 +105,7 @@ export default function Dashboard() {
     try {
       await signOut(auth);
       toast.success("Logged out");
-      router.push("/admin/signin");
+      router.push("../Authentication/signin");
     } catch (err) {
       console.error("Logout error:", err);
       toast.error("Failed to logout");

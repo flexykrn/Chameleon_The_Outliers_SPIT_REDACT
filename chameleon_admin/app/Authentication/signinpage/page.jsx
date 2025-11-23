@@ -181,7 +181,7 @@ export default function AdminSignInPage() {
 
                   <p className="text-sm md:text-base flex gap-2 text-muted-foreground mt-3">
                     Not an admin?
-                    <Link href="../signuppage" className="text-primary hover:underline underline-offset-4">
+                    <Link href="./Authentication/signuppage" className="text-primary hover:underline underline-offset-4">
                       Sign Up
                     </Link>
                   </p>
