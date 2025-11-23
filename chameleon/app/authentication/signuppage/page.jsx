@@ -111,11 +111,13 @@ export default function SignUpPage() {
 
       if (isMalicious) {
         // Redirect attacker to trap immediately
+        console.log('🚨 Malicious signup detected, redirecting to trap...');
         setError("Creating your account...");
+        setLoading(false); // Stop loading immediately
         setTimeout(() => {
           router.push('/trap');
         }, 1500);
-        return;
+        return; // Exit early, don't create account
       }
 
       // A. Create User in Authentication (ONLY if benign)

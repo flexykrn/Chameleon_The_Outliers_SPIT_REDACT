@@ -3,6 +3,61 @@ import { db } from '@/app/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { headers } from 'next/headers';
 
+/**
+ * Analyze attack payload using Google Gemini API
+ * Returns a concise explanation of the attack intention
+ */
+async function analyzePayloadWithGemini(payload, classification) {
+  const GEMINI_API_KEY = 'AIzaSyBxY1p7JpH6LfUqRKcSjiAsI4dsf4klEPw';
+  const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
+  
+  try {
+    const prompt = `Analyze this ${classification} attack payload and provide ONE concise sentence (max 120 chars) explaining what the attacker was trying to do. Include a security reference link.
+
+Payload: "${payload}"
+
+Format: "Brief explanation [Link: URL]"
+Example: "Bypassing auth with SQL OR 1=1 logic [Link: https://owasp.org/www-community/attacks/SQL_Injection]"`;
+
+    const response = await fetch(GEMINI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-goog-api-key': GEMINI_API_KEY,
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 80,
+          topP: 0.95,
+          topK: 40
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Gemini API error:', response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    const analysis = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    
+    console.log('✅ Gemini Analysis:', analysis);
+    return analysis || null;
+
+  } catch (error) {
+    console.error('❌ Gemini analysis failed:', error.message);
+    return null;
+  }
+}
+
 export async function POST(request) {
   console.log('🔥 LOG-ATTACK API CALLED');
   try {
@@ -67,6 +122,18 @@ export async function POST(request) {
       }
     }
 
+    // 🤖 Analyze attack payload with Gemini AI (only for malicious classifications)
+    let geminiAnalysis = null;
+    const attackPayload = payload || input;
+    const isMalicious = classification && 
+                       classification.toLowerCase() !== 'benign' && 
+                       classification.toLowerCase() !== 'safe';
+    
+    if (isMalicious && attackPayload) {
+      console.log('🤖 Analyzing payload with Gemini AI...');
+      geminiAnalysis = await analyzePayloadWithGemini(attackPayload, classification);
+    }
+
     // Create attack log document with new schema
     const attackLog = {
       // Basic info
@@ -83,6 +150,10 @@ export async function POST(request) {
       
       // XAI Explanation (if available)
       xaiExplanation: xaiExplanation || null,
+      
+      // 🤖 Gemini AI Analysis (new field)
+      geminiAnalysis: geminiAnalysis || null,
+      attackIntention: geminiAnalysis || null, // alias for easier access
       
       // Network info
       ip: ip,

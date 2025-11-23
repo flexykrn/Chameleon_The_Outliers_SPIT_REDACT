@@ -87,34 +87,44 @@ export default function SignInPage() {
 
       if (isMalicious) {
         // Redirect attacker to trap WITHOUT showing error
+        console.log('🚨 Malicious login detected, redirecting to trap...');
         setError("Verifying credentials...");
+        setLoading(false); // Stop loading immediately
         setTimeout(() => {
           router.push('/trap');
         }, 1500);
-        return;
+        return; // Exit early, don't try Firebase auth
       }
 
       // STEP 2: Proceed with Firebase authentication (ONLY if benign)
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      
-      // Successful login - redirect to real dashboard
-      router.push('/dashboard');
+      try {
+        const userCredential = await signInWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+        
+        // Successful login - redirect to real dashboard
+        console.log('✅ Successful login, redirecting to dashboard');
+        router.push('/dashboard');
+      } catch (authErr) {
+        console.error("Firebase Auth Error:", authErr);
+        
+        // Handle Firebase auth errors for legitimate users
+        if (authErr.code === "auth/user-not-found" || 
+            authErr.code === "auth/wrong-password" || 
+            authErr.code === "auth/invalid-credential") {
+          setError("Invalid email or password. Please check your credentials.");
+        } else if (authErr.code === "auth/too-many-requests") {
+          setError("Too many failed attempts. Please try again later.");
+        } else {
+          setError("Login failed. Please try again.");
+        }
+      }
 
     } catch (err) {
-      console.error("Login Error:", err);
-      
-      // Handle Firebase auth errors
-      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-        setError("Invalid email or password");
-      } else if (err.code === "auth/too-many-requests") {
-        setError("Too many failed attempts. Please try again later.");
-      } else {
-        setError("Login failed. Please try again.");
-      }
+      console.error("Classification Error:", err);
+      setError("Unable to process login. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -22,6 +22,88 @@ export default function ForensicsDashboard() {
     benign: 0
   });
   const [user, setUser] = useState(null);
+  const [showBlockchainPanel, setShowBlockchainPanel] = useState(false);
+  const [blockchainStatus, setBlockchainStatus] = useState({
+    anchoring: false,
+    verifying: false,
+    result: null
+  });
+
+  // Anchor logs to blockchain
+  const anchorToBlockchain = async () => {
+    setBlockchainStatus({ ...blockchainStatus, anchoring: true, result: null });
+    
+    try {
+      const response = await fetch('/api/anchor-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batchSize: 10 })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setBlockchainStatus({
+          anchoring: false,
+          verifying: false,
+          result: {
+            type: 'success',
+            message: 'Logs successfully anchored to blockchain!',
+            data: data
+          }
+        });
+      } else {
+        throw new Error(data.error || 'Anchoring failed');
+      }
+    } catch (error) {
+      setBlockchainStatus({
+        anchoring: false,
+        verifying: false,
+        result: {
+          type: 'error',
+          message: error.message
+        }
+      });
+    }
+  };
+
+  // Verify batch on blockchain
+  const verifyBatch = async (batchId) => {
+    setBlockchainStatus({ ...blockchainStatus, verifying: true, result: null });
+    
+    try {
+      const response = await fetch('/api/verify-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batchId })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setBlockchainStatus({
+          anchoring: false,
+          verifying: false,
+          result: {
+            type: 'verified',
+            message: 'Batch verified on blockchain - tamper-proof!',
+            data: data
+          }
+        });
+      } else {
+        throw new Error(data.error || 'Verification failed');
+      }
+    } catch (error) {
+      setBlockchainStatus({
+        anchoring: false,
+        verifying: false,
+        result: {
+          type: 'error',
+          message: error.message
+        }
+      });
+    }
+  };
 
   // Check authentication
   useEffect(() => {
@@ -134,12 +216,126 @@ export default function ForensicsDashboard() {
           <Button onClick={exportLogs} className="bg-blue-600 hover:bg-blue-700">
             📥 Export Logs
           </Button>
+          <Button 
+            onClick={() => setShowBlockchainPanel(!showBlockchainPanel)} 
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            🔗 Blockchain
+          </Button>
           <div className="text-right">
             <p className="text-gray-400 text-sm">Logged in as</p>
             <p className="text-green-400 font-semibold">{user?.email}</p>
           </div>
         </div>
       </div>
+
+      {/* Blockchain Panel */}
+      {showBlockchainPanel && (
+        <Card className="p-6 bg-gray-800 border-purple-500/30 mb-8">
+          <h2 className="text-2xl font-bold text-purple-400 mb-4 flex items-center gap-2">
+            🔗 Blockchain Log Anchoring
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Anchor Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-300">Anchor Logs to Blockchain</h3>
+              <p className="text-gray-400 text-sm">
+                Create a tamper-proof record of recent attack logs using Merkle tree cryptography.
+              </p>
+              <Button 
+                onClick={anchorToBlockchain}
+                disabled={blockchainStatus.anchoring}
+                className="bg-purple-600 hover:bg-purple-700 w-full"
+              >
+                {blockchainStatus.anchoring ? '⏳ Anchoring...' : '🔗 Anchor Recent Logs'}
+              </Button>
+            </div>
+
+            {/* Verify Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-300">Verify Batch</h3>
+              <p className="text-gray-400 text-sm">
+                Verify the integrity of anchored logs on the blockchain.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter batch ID"
+                  className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                  id="batchIdInput"
+                />
+                <Button 
+                  onClick={() => {
+                    const batchId = document.getElementById('batchIdInput').value;
+                    if (batchId) verifyBatch(batchId);
+                  }}
+                  disabled={blockchainStatus.verifying}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {blockchainStatus.verifying ? '⏳' : '✓'} Verify
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Results Display */}
+          {blockchainStatus.result && (
+            <div className={`mt-6 p-4 rounded border ${
+              blockchainStatus.result.type === 'success' ? 'bg-green-900/20 border-green-500/50' :
+              blockchainStatus.result.type === 'verified' ? 'bg-blue-900/20 border-blue-500/50' :
+              'bg-red-900/20 border-red-500/50'
+            }`}>
+              <p className={`font-semibold mb-2 ${
+                blockchainStatus.result.type === 'success' ? 'text-green-400' :
+                blockchainStatus.result.type === 'verified' ? 'text-blue-400' :
+                'text-red-400'
+              }`}>
+                {blockchainStatus.result.message}
+              </p>
+              
+              {blockchainStatus.result.data && (
+                <div className="text-sm text-gray-300 space-y-1 mt-3">
+                  {blockchainStatus.result.data.batch && (
+                    <>
+                      <p><strong>Batch ID:</strong> {blockchainStatus.result.data.batch.batchId}</p>
+                      <p><strong>Merkle Root:</strong> <code className="text-xs bg-gray-700 px-2 py-1 rounded">{blockchainStatus.result.data.batch.merkleRoot}</code></p>
+                      {blockchainStatus.result.data.batch.logCount && (
+                        <p><strong>Logs Anchored:</strong> {blockchainStatus.result.data.batch.logCount}</p>
+                      )}
+                    </>
+                  )}
+                  {blockchainStatus.result.data.blockchain && (
+                    <>
+                      <p><strong>Transaction:</strong> <code className="text-xs bg-gray-700 px-2 py-1 rounded">{blockchainStatus.result.data.blockchain.transactionHash}</code></p>
+                      <p><strong>Block Number:</strong> {blockchainStatus.result.data.blockchain.blockNumber}</p>
+                      <a 
+                        href={blockchainStatus.result.data.blockchain.explorerUrl} 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-purple-400 hover:underline"
+                      >
+                        🔍 View on Blockchain Explorer →
+                      </a>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="mt-4 p-3 bg-gray-700/50 rounded text-xs text-gray-400">
+            <p className="font-semibold mb-1">ℹ️ How it works:</p>
+            <ol className="list-decimal list-inside space-y-1">
+              <li>Recent logs are hashed using SHA-256</li>
+              <li>Hashes are combined into a Merkle tree</li>
+              <li>Merkle root is stored on blockchain (immutable)</li>
+              <li>Any log tampering changes the Merkle root</li>
+              <li>Blockchain timestamp proves when logs were created</li>
+            </ol>
+          </div>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
@@ -214,6 +410,7 @@ export default function ForensicsDashboard() {
                 <th className="p-3">Type</th>
                 <th className="p-3">Input</th>
                 <th className="p-3">Confidence</th>
+                <th className="p-3">Attack Intention</th>
                 <th className="p-3">IP Address</th>
                 <th className="p-3">Location</th>
                 <th className="p-3">Detected By</th>
@@ -223,7 +420,7 @@ export default function ForensicsDashboard() {
             <tbody>
               {attacks.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-gray-500">
+                  <td colSpan="9" className="p-8 text-center text-gray-500">
                     No attacks detected yet. System is monitoring...
                   </td>
                 </tr>
@@ -263,6 +460,21 @@ export default function ForensicsDashboard() {
                           {((attack.confidence || 0) * 100).toFixed(0)}%
                         </span>
                       </div>
+                    </td>
+                    <td className="p-3">
+                      {attack.geminiAnalysis || attack.attackIntention ? (
+                        <div className="max-w-sm">
+                          <div 
+                            className="text-xs text-amber-300 leading-relaxed"
+                            dangerouslySetInnerHTML={{
+                              __html: (attack.geminiAnalysis || attack.attackIntention)
+                                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">$1 →</a>')
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-gray-600 text-xs">Analyzing...</span>
+                      )}
                     </td>
                     <td className="p-3">
                       <div className="font-mono text-xs text-gray-400">
