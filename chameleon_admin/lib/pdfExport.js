@@ -301,33 +301,33 @@ export async function generateDashboardPDF(stats, attacks) {
 
     // Screenshots removed - replaced with data visualizations above
 
-    // Add Recent Attacks Table on new page
+    // Add Recent Attacks Summary Table
     pdf.addPage();
     currentY = 15;
     
-    // Section header with icon
+    // Section header
     pdf.setFillColor(241, 245, 249);
     pdf.rect(15, currentY, pageWidth - 30, 12, 'F');
     pdf.setFontSize(16);
     pdf.setFont(undefined, 'bold');
     pdf.setTextColor(59, 130, 246);
-    pdf.text('RECENT SECURITY EVENTS LOG', 20, currentY + 8);
+    pdf.text('RECENT SECURITY EVENTS SUMMARY', 20, currentY + 8);
     currentY += 20;
 
     pdf.setFontSize(9);
     pdf.setTextColor(100, 100, 100);
     pdf.setFont(undefined, 'normal');
-    pdf.text(`Showing ${Math.min(15, attacks.length)} most recent attack events`, 15, currentY);
+    pdf.text(`Summary table of ${Math.min(20, attacks.length)} most recent attack events`, 15, currentY);
     currentY += 10;
 
-    // Enhanced table headers
+    // Enhanced table headers (removed confidence column)
     pdf.setFont(undefined, 'bold');
     pdf.setFillColor(59, 130, 246);
     pdf.setTextColor(255, 255, 255);
     pdf.roundedRect(15, currentY, pageWidth - 30, 10, 2, 2, 'F');
     
-    const colWidths = [32, 32, 48, 28, 25];
-    const headers = ['Timestamp', 'Source IP', 'Location', 'Attack Type', 'Confidence'];
+    const colWidths = [38, 35, 55, 35];
+    const headers = ['Timestamp', 'Source IP', 'Location', 'Attack Type'];
     let headerX = 17;
     
     pdf.setFontSize(9);
@@ -338,13 +338,13 @@ export async function generateDashboardPDF(stats, attacks) {
     
     currentY += 12;
 
-    // Table rows (show up to 15 recent attacks with better formatting)
+    // Table rows (show up to 20 recent attacks in summary)
     pdf.setFont(undefined, 'normal');
     pdf.setFontSize(8);
     
-    const recentAttacks = attacks.slice(0, 15);
+    const summaryAttacks = attacks.slice(0, 20);
     
-    recentAttacks.forEach((attack, index) => {
+    summaryAttacks.forEach((attack, index) => {
       if (currentY > pageHeight - 20) {
         pdf.addPage();
         currentY = 20;
@@ -380,9 +380,8 @@ export async function generateDashboardPDF(stats, attacks) {
           month: 'short'
         }) || 'N/A',
         attack.ip || 'Unknown',
-        `${attack.city || 'Unknown'}, ${attack.country || ''}`.substring(0, 30),
-        attackType.toUpperCase(),
-        `${(attack.confidence * 100 || 0).toFixed(0)}%`
+        `${attack.city || 'Unknown'}, ${attack.country || ''}`.substring(0, 35),
+        attackType.toUpperCase()
       ];
 
       // Render text with proper coloring
@@ -413,6 +412,286 @@ export async function generateDashboardPDF(stats, attacks) {
       });
 
       currentY += 14; // Increased spacing between cards
+    });
+
+    // Add Detailed Security Events (each attack gets a full page with all details)
+    const recentAttacks = attacks.slice(0, 10); // Show top 10 attacks in detail
+    
+    recentAttacks.forEach((attack, index) => {
+      // Start each detailed attack on a new page
+      pdf.addPage();
+      currentY = 15;
+
+      const attackType = (attack.classification || 'benign').toLowerCase();
+      
+      // Page header with attack number
+      pdf.setFillColor(59, 130, 246);
+      pdf.rect(0, 0, pageWidth, 25, 'F');
+      pdf.setFontSize(18);
+      pdf.setFont(undefined, 'bold');
+      pdf.setTextColor(255, 255, 255);
+      pdf.text(`SECURITY EVENT #${index + 1}`, pageWidth / 2, 16, { align: 'center' });
+      
+      currentY = 35;
+
+      // EVENT OVERVIEW SECTION
+      pdf.setFillColor(241, 245, 249);
+      pdf.rect(15, currentY, pageWidth - 30, 10, 'F');
+      pdf.setFontSize(14);
+      pdf.setFont(undefined, 'bold');
+      pdf.setTextColor(59, 130, 246);
+      pdf.text('EVENT OVERVIEW', 20, currentY + 7);
+      currentY += 15;
+
+      // Timestamp
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFont(undefined, 'normal');
+      pdf.text('Timestamp:', 20, currentY);
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont(undefined, 'bold');
+      pdf.text(
+        attack.timestamp?.toDate?.()?.toLocaleString('en-IN', { 
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit', 
+          minute: '2-digit',
+          second: '2-digit'
+        }) || 'N/A',
+        55, currentY
+      );
+      currentY += 10;
+
+      // IP Address
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFont(undefined, 'normal');
+      pdf.text('IP Address:', 20, currentY);
+      pdf.setFontSize(10);
+      pdf.setTextColor(59, 130, 246);
+      pdf.setFont(undefined, 'bold');
+      pdf.text(attack.ip || 'Unknown', 55, currentY);
+      currentY += 10;
+
+      // Location
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFont(undefined, 'normal');
+      pdf.text('Location:', 20, currentY);
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont(undefined, 'bold');
+      pdf.text(`${attack.city || 'Unknown'}, ${attack.country || 'Unknown'}`, 55, currentY);
+      currentY += 15;
+
+      // CLASSIFICATION SECTION
+      pdf.setFillColor(241, 245, 249);
+      pdf.rect(15, currentY, pageWidth - 30, 10, 'F');
+      pdf.setFontSize(14);
+      pdf.setFont(undefined, 'bold');
+      pdf.setTextColor(59, 130, 246);
+      pdf.text('THREAT CLASSIFICATION', 20, currentY + 7);
+      currentY += 15;
+
+      // Threat Type with color coding
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFont(undefined, 'normal');
+      pdf.text('Threat Type:', 20, currentY);
+      
+      // Color-coded badge for threat type
+      if (attackType === 'sqli') {
+        pdf.setFillColor(220, 38, 38);
+        pdf.setTextColor(255, 255, 255);
+      } else if (attackType === 'xss') {
+        pdf.setFillColor(249, 115, 22);
+        pdf.setTextColor(255, 255, 255);
+      } else {
+        pdf.setFillColor(34, 197, 94);
+        pdf.setTextColor(255, 255, 255);
+      }
+      pdf.roundedRect(55, currentY - 5, 35, 8, 2, 2, 'F');
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, 'bold');
+      pdf.text(attackType.toUpperCase(), 72.5, currentY + 0.5, { align: 'center' });
+      currentY += 10;
+
+      // Session ID
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFont(undefined, 'normal');
+      pdf.text('Session ID:', 20, currentY);
+      pdf.setFontSize(8);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont(undefined, 'normal');
+      const sessionId = attack.sessionId || 'N/A';
+      pdf.text(sessionId, 55, currentY);
+      currentY += 15;
+
+      // REQUEST DETAILS SECTION
+      pdf.setFillColor(241, 245, 249);
+      pdf.rect(15, currentY, pageWidth - 30, 10, 'F');
+      pdf.setFontSize(14);
+      pdf.setFont(undefined, 'bold');
+      pdf.setTextColor(59, 130, 246);
+      pdf.text('REQUEST DETAILS', 20, currentY + 7);
+      currentY += 15;
+
+      // HTTP Method
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFont(undefined, 'normal');
+      pdf.text('HTTP Method:', 20, currentY);
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont(undefined, 'bold');
+      pdf.text(attack.httpMethod || 'N/A', 55, currentY);
+      currentY += 10;
+
+      // Endpoint
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFont(undefined, 'normal');
+      pdf.text('Endpoint:', 20, currentY);
+      pdf.setFontSize(9);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont(undefined, 'normal');
+      const endpoint = attack.endpoint || 'N/A';
+      const endpointLines = pdf.splitTextToSize(endpoint, pageWidth - 65);
+      pdf.text(endpointLines, 55, currentY);
+      currentY += (endpointLines.length * 5) + 10;
+
+      // ATTACK INTENTION SECTION
+      if (attack.attackIntent) {
+        if (currentY > pageHeight - 50) {
+          pdf.addPage();
+          currentY = 20;
+        }
+
+        pdf.setFillColor(255, 243, 224);
+        pdf.rect(15, currentY, pageWidth - 30, 10, 'F');
+        pdf.setFontSize(14);
+        pdf.setFont(undefined, 'bold');
+        pdf.setTextColor(234, 88, 12);
+        pdf.text('ATTACK INTENTION ANALYSIS', 20, currentY + 7);
+        currentY += 15;
+
+        pdf.setDrawColor(234, 88, 12);
+        pdf.setFillColor(255, 247, 237);
+        
+        pdf.setFontSize(9);
+        pdf.setTextColor(124, 45, 18);
+        pdf.setFont(undefined, 'normal');
+        const intentText = attack.attackIntent;
+        const intentLines = pdf.splitTextToSize(intentText, pageWidth - 40);
+        const maxIntentLines = 18;
+        const displayIntentLines = intentLines.slice(0, maxIntentLines);
+        
+        pdf.roundedRect(15, currentY, pageWidth - 30, (displayIntentLines.length * 5) + 8, 2, 2, 'FD');
+        pdf.text(displayIntentLines, 20, currentY + 6);
+        currentY += (displayIntentLines.length * 5) + 15;
+      }
+
+      // MALICIOUS PAYLOAD SECTION
+      if (currentY > pageHeight - 60) {
+        pdf.addPage();
+        currentY = 20;
+      }
+
+      pdf.setFillColor(254, 242, 242);
+      pdf.rect(15, currentY, pageWidth - 30, 10, 'F');
+      pdf.setFontSize(14);
+      pdf.setFont(undefined, 'bold');
+      pdf.setTextColor(220, 38, 38);
+      pdf.text('MALICIOUS PAYLOAD', 20, currentY + 7);
+      currentY += 15;
+
+      pdf.setDrawColor(220, 38, 38);
+      pdf.setFillColor(254, 242, 242);
+      pdf.roundedRect(15, currentY, pageWidth - 30, 0, 2, 2, 'D');
+      
+      pdf.setFontSize(8);
+      pdf.setTextColor(220, 38, 38);
+      pdf.setFont(undefined, 'normal');
+      const payloadText = attack.input || 'No payload data';
+      const payloadLines = pdf.splitTextToSize(payloadText, pageWidth - 40);
+      const maxPayloadLines = 12;
+      const displayPayloadLines = payloadLines.slice(0, maxPayloadLines);
+      
+      pdf.setFillColor(254, 242, 242);
+      pdf.roundedRect(15, currentY, pageWidth - 30, (displayPayloadLines.length * 4) + 8, 2, 2, 'FD');
+      pdf.text(displayPayloadLines, 20, currentY + 6);
+      currentY += (displayPayloadLines.length * 4) + 15;
+
+      // AI ANALYSIS SECTION
+      if (attack.attackIntent) {
+        if (currentY > pageHeight - 60) {
+          pdf.addPage();
+          currentY = 20;
+        }
+
+        pdf.setFillColor(239, 246, 255);
+        pdf.rect(15, currentY, pageWidth - 30, 10, 'F');
+        pdf.setFontSize(14);
+        pdf.setFont(undefined, 'bold');
+        pdf.setTextColor(59, 130, 246);
+        pdf.text('AI-POWERED ATTACK ANALYSIS (GEMINI)', 20, currentY + 7);
+        currentY += 15;
+
+        pdf.setDrawColor(59, 130, 246);
+        pdf.setFillColor(239, 246, 255);
+        
+        pdf.setFontSize(9);
+        pdf.setTextColor(30, 58, 138);
+        pdf.setFont(undefined, 'normal');
+        const analysisText = attack.attackIntent;
+        const analysisLines = pdf.splitTextToSize(analysisText, pageWidth - 40);
+        const maxAnalysisLines = 15;
+        const displayAnalysisLines = analysisLines.slice(0, maxAnalysisLines);
+        
+        pdf.roundedRect(15, currentY, pageWidth - 30, (displayAnalysisLines.length * 5) + 8, 2, 2, 'FD');
+        pdf.text(displayAnalysisLines, 20, currentY + 6);
+        currentY += (displayAnalysisLines.length * 5) + 15;
+      }
+
+      // XAI EXPLANATION SECTION
+      if (attack.xaiExplanation) {
+        if (currentY > pageHeight - 60) {
+          pdf.addPage();
+          currentY = 20;
+        }
+
+        pdf.setFillColor(250, 245, 255);
+        pdf.rect(15, currentY, pageWidth - 30, 10, 'F');
+        pdf.setFontSize(14);
+        pdf.setFont(undefined, 'bold');
+        pdf.setTextColor(147, 51, 234);
+        pdf.text('EXPLAINABLE AI (XAI) MODEL INSIGHTS', 20, currentY + 7);
+        currentY += 15;
+
+        pdf.setDrawColor(147, 51, 234);
+        pdf.setFillColor(250, 245, 255);
+        
+        pdf.setFontSize(8);
+        pdf.setTextColor(88, 28, 135);
+        pdf.setFont(undefined, 'normal');
+        
+        let xaiText = attack.xaiExplanation;
+        if (typeof xaiText === 'object') {
+          xaiText = JSON.stringify(xaiText, null, 2);
+        }
+        
+        const xaiLines = pdf.splitTextToSize(xaiText, pageWidth - 40);
+        const maxXaiLines = 20;
+        const displayXaiLines = xaiLines.slice(0, maxXaiLines);
+        
+        pdf.roundedRect(15, currentY, pageWidth - 30, (displayXaiLines.length * 4) + 8, 2, 2, 'FD');
+        pdf.text(displayXaiLines, 20, currentY + 6);
+        currentY += (displayXaiLines.length * 4) + 15;
+      }
     });
 
     // Add professional footer with page numbers
