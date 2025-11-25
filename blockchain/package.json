@@ -1,0 +1,26 @@
+{
+  "name": "chameleon-blockchain",
+  "version": "1.0.0",
+  "description": "Log anchoring blockchain integration for Chameleon WAF",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "blockchain",
+    "hardhat",
+    "ethereum",
+    "security",
+    "log-anchoring"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}

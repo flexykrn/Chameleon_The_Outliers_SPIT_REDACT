@@ -1,0 +1,16 @@
+# Ignore node modules and environment files
+node_modules/
+.env
+cache/
+artifacts/
+*.log
+.DS_Store
+coverage/
+typechain/
+typechain-types/
+
+# Private notes
+NOTES.md
+
+# Backend security logs (sensitive data)
+../backend/security_logs/
